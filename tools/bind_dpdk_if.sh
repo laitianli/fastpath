@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export OFP_NETDEV_PCI=0000:02:05.0
+export OFP_NETDEV_PCI=0000:02:06.0
 PWD=`dirname $0`
 
 if [ -z "$OFP_NETDEV_PCI" ];then
