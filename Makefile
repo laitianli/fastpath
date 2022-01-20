@@ -25,7 +25,7 @@ odp_dpdk:
 
 ofp:
 	cd $(OFP_DIR) && ./bootstrap
-	cd $(OFP_DIR) && ./configure --with-odp=${ODP_DPDK_DIR}/install --enable-debug --disable-sp --prefix=${OFP_DIR}/install CFLAGS="-g -O0"
+	cd $(OFP_DIR) && ./configure --with-odp=${ODP_DPDK_DIR}/install --enable-sp --enable-debug --prefix=${OFP_DIR}/install CFLAGS="-g -O0"
 	cd $(OFP_DIR) && make -j4 install
 
 build_ofp:
