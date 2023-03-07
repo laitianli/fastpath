@@ -1,0 +1,108 @@
+PWD=$(shell pwd)
+TARGET=x86_64-native-linuxapp-gcc
+OFP_DIR=$(PWD)/ofp
+ODP_DPDK_DIR=$(PWD)/odp-dpdk
+DPDK_DIR=$(PWD)/dpdk
+ARCH=aarch64
+DPDK_INSTALL_DIR=$(DPDK_DIR)/$(ARCH)_install_dir
+COMPILE_TOOL=aarch64-linux-gnu-
+
+LIB_SRC=$(PWD)/lib_src
+LIB_INSTALL=${LIB_SRC}/install
+LIBCONFIG_PREFIX=${LIB_SRC}/libconfig-1.4.9/install/
+LIBCONFIG_PREFIX=${LIB_INSTALL}
+
+LIB_OPENSSL=$(PWD)/lib_src/openssl
+LIB_OPENSSL_PREFIX=${LIB_OPENSSL}/install/
+LIB_OPENSSL_PREFIX=${LIB_INSTALL}
+
+LIB_PCAP=$(PWD)/lib_src/libpcap
+LIB_PCAP_PREFIX=${LIB_PCAP}/install
+LIB_PCAP_PREFIX=${LIB_INSTALL}
+
+all: dpdk odp_dpdk ofp
+build: build_dpdk build_odp_dpdk build_ofp
+define dpdk_19_11
+	cd $(DPDK_DIR) && make config T=${TARGET} O=${TARGET}
+	cd $(DPDK_DIR) && make -j4 build O=${TARGET} EXTRA_CFLAGS="-fPIC -O0 -g"
+	cd $(DPDK_DIR) && make install  O=${TARGET} DESTDIR=${TARGET}	
+endef
+
+
+
+define dpdk_21_11
+	echo "[note] build dpdk 21.11"
+	cd $(DPDK_DIR) && meson setup aarch64-linux-gnu-gcc --cross-file config/arm/arm64_dpaa_linux_gcc -Ddisable_drivers=event/cnxk  -Dc_args='-fPIC' -Dc_link_args='-fPIC' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static
+	cd $(DPDK_DIR) && ninja -C aarch64-linux-gnu-gcc
+	cd $(DPDK_DIR) && ninja -C aarch64-linux-gnu-gcc install
+endef
+
+dpdk:
+	$(call dpdk_21_11)
+
+
+build_dpdk:
+	cd $(DPDK_DIR) && make -j4 build O=${TARGET} EXTRA_CFLAGS="-fPIC -O0 -g"
+	cd $(DPDK_DIR) && make install  O=${TARGET} DESTDIR=${TARGET}	
+
+build_odp_dpdk:
+	cd $(ODP_DPDK_DIR) && make -j4 install
+
+define odp_dpdk_19_11
+	cd $(ODP_DPDK_DIR) && ./bootstrap
+	cd $(ODP_DPDK_DIR) && ./configure --enable-debug --enable-debug-print --without-openssl --with-dpdk-path=$(DPDK_DIR)/$(TARGET)/usr/local --prefix=${ODP_DPDK_DIR}/install CFLAGS="-g -O0"
+	cd $(ODP_DPDK_DIR) && make -j4 install
+endef
+
+define odp_dpdk_21_11
+	cd $(ODP_DPDK_DIR) && ./bootstrap
+	cd $(ODP_DPDK_DIR) && ./configure CC=$(COMPILE_TOOL)gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-debug --enable-debug-print --without-openssl --without-examples --without-tests  --prefix=${ODP_DPDK_DIR}/install CFLAGS="-fPIC -g -O0 -D_DPDK_NEW_VERSION_" PKG_CONFIG_PATH=$(DPDK_INSTALL_DIR)/lib/pkgconfig:${LIBCONFIG_PREFIX}/lib/pkgconfig/ LIBCONFIG_LIBS="$(shell pkg-config --libs libconfig)" LIBCONFIG_CFLAGS="$(shell pkg-config --cflags libconfig)"
+	cd $(ODP_DPDK_DIR) && make -j4 install
+endef
+
+odp_dpdk:
+	$(call odp_dpdk_21_11)
+ofp:
+	cd $(OFP_DIR) && ./bootstrap
+	cd $(OFP_DIR) && ./configure CC=${COMPILE_TOOL}gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --with-odp=${ODP_DPDK_DIR}/install --enable-static --enable-sp --enable-debug --with-odp-lib=odp-dpdk --with-libconfig=${LIBCONFIG_PREFIX} --prefix=${OFP_DIR}/install CFLAGS="-g -O0 -D_DPDK_NEW_VERSION" PKG_CONFIG_LIBDIR=${ODP_DPDK_DIR}/install/lib/pkgconfig:${LIBCONFIG_PREFIX}/lib/pkgconfig/ LIBCONFIG_LIBS="$(shell pkg-config --libs libconfig)" LIBCONFIG_CFLAGS="$(shell pkg-config --cflags libconfig)"
+	cd $(OFP_DIR) && make -j4 install
+
+build_ofp:
+	cd $(OFP_DIR) && make -j4 install
+
+
+lib_src: lib_libconfig lib_openssl lib_pcap
+
+lib_libconfig:
+	echo "build lib_src...."
+	mkdir $(LIBCONFIG_PREFIX) -p
+	cd $(LIB_SRC)/libconfig-1.4.9 && ./configure  CC=${COMPILE_TOOL}gcc --disable-cxx --host=arm --target=arm --enable-shared CFLAGS="-fPIC" --prefix=$(LIBCONFIG_PREFIX)
+	cd $(LIB_SRC)/libconfig-1.4.9 && make -j3 && make install
+
+lib_libconfig_clean:
+	cd $(LIB_SRC)/libconfig-1.4.9 && make clean
+
+lib_openssl:
+	mkdir ${LIB_OPENSSL_PREFIX} -p
+	cd ${LIB_OPENSSL} && ./Configure --prefix=${LIB_OPENSSL_PREFIX} CFLAGS="-fPIC"  shared no-asm linux-aarch64
+	cd ${LIB_OPENSSL} && make CC=${COMPILE_TOOL}gcc && make install
+
+lib_openssl_clean:
+	cd ${LIB_OPENSSL} && make clean
+
+lib_pcap:
+	mkdir ${LIB_PCAP_PREFIX} -p
+	cd ${LIB_PCAP} &&  ./configure CC=${COMPILE_TOOL}gcc  --without-libnl --host=aarch64 --target=aarch64 --enable-shared CFLAGS="-fPIC" --prefix=${LIB_PCAP_PREFIX}
+	cd ${LIB_PCAP} && make -j3 && make install
+
+lib_pcap_clean:
+	cd ${LIB_PCAP} && make clean
+
+.PHONY: dpdk odp_dpdk ofp clean lib_src lib_libconfig lib_openssl lib_libconfig_clean lib_openssl lib_pcap lib_pcap_clean
+	
+
+
+clean:
+	#make -C $(DPDK_DIR) clean
+	make -C $(ODP_DPDK_DIR) clean
+	make -C $(OFP_DIR) clean
