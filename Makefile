@@ -39,10 +39,10 @@ define odp_dpdk_19_11
 	cd $(ODP_DPDK_DIR) && ./configure --enable-debug --enable-debug-print --without-openssl --with-dpdk-path=$(DPDK_DIR)/$(TARGET)/usr/local --prefix=${ODP_DPDK_DIR}/install CFLAGS="-g -O0"
 	cd $(ODP_DPDK_DIR) && make -j4 install
 endef
-
+#cd $(ODP_DPDK_DIR) && ./configure --enable-debug --enable-debug-print --without-openssl  --prefix=${ODP_DPDK_DIR}/install CFLAGS="-fPIC -g -O0 -D_DPDK_NEW_VERSION_" PKG_CONFIG_PATH=$(DPDK_DIR)/install_dir/lib/pkgconfig DPDK_LIBS="$(shell pkg-config --static --libs libdpdk)" DPDK_CFLAGS="$(shell pkg-config --cflags libdpdk)"
 define odp_dpdk_21_11
 	cd $(ODP_DPDK_DIR) && ./bootstrap
-	cd $(ODP_DPDK_DIR) && ./configure --enable-debug --enable-debug-print --without-openssl  --prefix=${ODP_DPDK_DIR}/install CFLAGS="-fPIC -g -O0 -D_DPDK_NEW_VERSION_" PKG_CONFIG_PATH=$(DPDK_DIR)/install_dir/lib/pkgconfig DPDK_LIBS="$(shell pkg-config --static --libs libdpdk)" DPDK_CFLAGS="$(shell pkg-config --cflags libdpdk)"
+	cd $(ODP_DPDK_DIR) && ./configure --enable-debug --enable-debug-print --without-openssl  --prefix=${ODP_DPDK_DIR}/install CFLAGS="-fPIC -g -O0 -D_DPDK_NEW_VERSION_" PKG_CONFIG_PATH=$(DPDK_DIR)/install_dir/lib/pkgconfig
 	cd $(ODP_DPDK_DIR) && make -j4 install
 endef
 
@@ -50,7 +50,7 @@ odp_dpdk:
 	$(call odp_dpdk_21_11)
 ofp:
 	cd $(OFP_DIR) && ./bootstrap
-	cd $(OFP_DIR) && ./configure --with-odp=${ODP_DPDK_DIR}/install --enable-sp --enable-debug --with-odp-lib=odp-dpdk --prefix=${OFP_DIR}/install CFLAGS="-g -O0 -D_DPDK_NEW_VERSION" PKG_CONFIG_LIBDIR=${ODP_DPDK_DIR}/install/lib/pkgconfig
+	cd $(OFP_DIR) && ./configure --with-odp=${ODP_DPDK_DIR}/install --enable-static --enable-sp --enable-debug --with-odp-lib=odp-dpdk --prefix=${OFP_DIR}/install CFLAGS="-g -O0 -D_DPDK_NEW_VERSION" PKG_CONFIG_LIBDIR=${ODP_DPDK_DIR}/install/lib/pkgconfig
 	cd $(OFP_DIR) && make -j4 install
 
 build_ofp:
