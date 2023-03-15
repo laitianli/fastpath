@@ -4,6 +4,7 @@ OFP_DIR=$(PWD)/ofp
 ODP_DPDK_DIR=$(PWD)/odp-dpdk
 DPDK_DIR=$(PWD)/dpdk
 DPDK_INSTALL_DIR=$(DPDK_DIR)/install_dir
+DPDK_BUILD_DIR=x86_build
 #export PKG_CONFIG_PATH=$(DPDK_DIR)/install_dir/lib/pkgconfig
 all: dpdk odp_dpdk ofp
 build: build_dpdk build_odp_dpdk build_ofp
@@ -18,9 +19,9 @@ endef
 define dpdk_21_11
 	echo "[note] build dpdk 21.11"
 	cd $(DPDK_DIR) && meson configure -Dc_args='-fPIC' -Dc_link_args='-fPIC' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static
-	cd $(DPDK_DIR) && meson x86_build -Dc_args='-fPIC' -Dc_link_args='-fPIC' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static
-	cd $(DPDK_DIR) && ninja -C x86_build
-	cd $(DPDK_DIR) && ninja -C x86_build install
+	cd $(DPDK_DIR) && meson $(DPDK_BUILD_DIR) -Dc_args='-fPIC' -Dc_link_args='-fPIC' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static
+	cd $(DPDK_DIR) && ninja -C $(DPDK_BUILD_DIR)
+	cd $(DPDK_DIR) && ninja -C $(DPDK_BUILD_DIR) install
 endef
 
 dpdk:
@@ -61,6 +62,7 @@ build_ofp:
 
 
 clean:
-	make -C $(DPDK_DIR) clean
+	if [ -d $(DPDK_INSTALL_DIR) ];then rm -rf $(DPDK_INSTALL_DIR); fi
+	if [ -d $(DPDK_DIR)/$(DPDK_BUILD_DIR) ];then rm -rf $(DPDK_DIR)/$(DPDK_BUILD_DIR); fi
 	make -C $(ODP_DPDK_DIR) clean
 	make -C $(OFP_DIR) clean
