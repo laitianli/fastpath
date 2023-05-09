@@ -20,7 +20,8 @@ LIB_OPENSSL_PREFIX=${LIB_INSTALL}
 LIB_PCAP=$(PWD)/lib_src/libpcap
 LIB_PCAP_PREFIX=${LIB_PCAP}/install
 LIB_PCAP_PREFIX=${LIB_INSTALL}
-
+DEP_LIBS=-L${LIB_INSTALL}/lib -lpcap -lbpf
+DEP_INC=-I${LIB_INSTALL}/include
 all: dpdk odp_dpdk ofp
 build: build_dpdk build_odp_dpdk build_ofp
 define dpdk_19_11
@@ -33,7 +34,7 @@ endef
 
 define dpdk_21_11
 	echo "[note] build dpdk 21.11"
-	cd $(DPDK_DIR) && meson setup $(TOOL_CHAIN) --cross-file config/arm/arm64_dpaa_linux_gcc -Ddisable_drivers=event/cnxk  -Dc_args='-fPIC -O0 -g' -Dc_link_args='-fPIC -O0 -g' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static
+	cd $(DPDK_DIR) && meson setup $(TOOL_CHAIN) --cross-file config/arm/arm64_dpaa_linux_gcc -Ddisable_drivers=event/cnxk  -Dc_args='-fPIC -O0 -g $(DEP_INC)' -Dc_link_args='-fPIC -O0 -g $(DEP_LIBS)' --prefix=$(DPDK_INSTALL_DIR) --libdir=lib --includedir=include --default-library=static -Dexamples=port_fwd,l2fwd,l3fwd
 	cd $(DPDK_DIR) && ninja -C $(TARGET)
 	cd $(DPDK_DIR) && ninja -C $(TARGET) install
 endef
@@ -57,15 +58,22 @@ endef
 
 define odp_dpdk_21_11
 	cd $(ODP_DPDK_DIR) && ./bootstrap
-	cd $(ODP_DPDK_DIR) && ./configure CC=$(COMPILE_TOOL)gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-debug --enable-debug-print --without-openssl --without-examples --without-tests --prefix=${ODP_DPDK_DIR}/install CFLAGS="-g -O0 -D_DPDK_NEW_VERSION_" PKG_CONFIG_PATH=$(DPDK_INSTALL_DIR)/lib/pkgconfig:$(LIBCONFIG_PREFIX)/lib/pkgconfig/ LIBCONFIG_LIBS="$(shell pkg-config --libs libconfig)" LIBCONFIG_CFLAGS="$(shell pkg-config --cflags libconfig)"
+	cd $(ODP_DPDK_DIR) && ./configure CC=$(COMPILE_TOOL)gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --enable-debug --enable-debug-print --without-openssl --without-examples --without-tests --prefix=${ODP_DPDK_DIR}/install CFLAGS="-fPIC -g -O0" PKG_CONFIG_PATH=$(DPDK_INSTALL_DIR)/lib/pkgconfig:$(LIBCONFIG_PREFIX)/lib/pkgconfig/ 
 	cd $(ODP_DPDK_DIR) && make -j4 install
 endef
 
+
 odp_dpdk:
 	$(call odp_dpdk_21_11)
+
+define set_odp_library_static
+	@sed -i 's/library_names=.*/library_names=/' $(ODP_DPDK_DIR)/install/lib/libodp-dpdk.la
+	@sed -i 's/library_names=.*/library_names=/' $(ODP_DPDK_DIR)/install/lib/libodphelper.la
+endef
 ofp:
+	$(call set_odp_library_static)
 	cd $(OFP_DIR) && ./bootstrap
-	cd $(OFP_DIR) && ./configure CC=${COMPILE_TOOL}gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --with-odp=${ODP_DPDK_DIR}/install --enable-static --enable-sp --enable-debug --with-odp-lib=odp-dpdk --with-libconfig=$(LIBCONFIG_PREFIX) --prefix=$(OFP_DIR)/install CFLAGS="-g -O0 -D_DPDK_NEW_VERSION" PKG_CONFIG_LIBDIR=$(ODP_DPDK_DIR)/install/lib/pkgconfig:${LIBCONFIG_PREFIX}/lib/pkgconfig/ LIBCONFIG_LIBS="$(shell pkg-config --libs libconfig)" LIBCONFIG_CFLAGS="$(shell pkg-config --cflags libconfig)"
+	cd $(OFP_DIR) && ./configure CC=${COMPILE_TOOL}gcc CXX=$(COMPILE_TOOL)g++ --host=aarch64-linux-gnu --target=aarch64-linux-gnu --with-odp=${ODP_DPDK_DIR}/install --enable-static --enable-sp --enable-debug --with-odp-lib=odp-dpdk --with-libconfig=$(LIBCONFIG_PREFIX) --prefix=$(OFP_DIR)/install CFLAGS="-fPIC -g -O0" PKG_CONFIG_LIBDIR=$(ODP_DPDK_DIR)/install/lib/pkgconfig:${LIBCONFIG_PREFIX}/lib/pkgconfig/ LIBCONFIG_LIBS="$(shell pkg-config --libs libconfig)" LIBCONFIG_CFLAGS="$(shell pkg-config --cflags libconfig)"
 	cd $(OFP_DIR) && make -j4 install
 
 build_ofp:
